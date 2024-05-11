@@ -5,22 +5,20 @@ import sys
 
 from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
 
+color_names = [
+    "highlight",
+    "quote",
+    "research",
+    "word"
+]
+
 TEMPLATE = """
-# {{ book_data['book_title'] }}
-
 {% for chapter in book_data['chapters'] %}
-## {{ chapter['chapter_title'] }}
-
 {% for highlight in chapter['highlights'] %}
-> {{ highlight['highlight'].strip() }}
+> [!{{highlight['color']}}] {{ highlight['highlight'].strip() }}
 {% if highlight['note'] is not none and highlight['note'] != "" %}
-Note: {{ highlight['note'] }}
+{{ highlight['note'] }}
 {% endif %}
-
-Chapter progress: {{ highlight['chapter_progress'] }} %
-Date: {{ highlight['date'] }}
-
----
 
 {% endfor %}
 {% endfor %}
@@ -86,7 +84,7 @@ class KoboHighlightsExtractor:
         chapter_id = chapter["id"]
         query = (
             "SELECT "
-            + "VolumeID, ContentID, Text, Annotation, DateCreated, ChapterProgress FROM Bookmark WHERE (Type = 'highlight' OR Type = 'note') "
+            + "VolumeID, ContentID, Text, Annotation, DateCreated, ChapterProgress, Color FROM Bookmark WHERE (Type = 'highlight' OR Type = 'note') "
             + "ORDER BY DateCreated ASC"
         )
         for row in self.cursor.execute(query):
@@ -101,6 +99,7 @@ class KoboHighlightsExtractor:
                 highlight["note"] = row[3]
                 highlight["date"] = row[4].split("T")[0]
                 highlight["chapter_progress"] = row[5]
+                highlight["color"] = row[6]
                 highlights.append(highlight)
         return highlights
 
@@ -117,6 +116,8 @@ class KoboHighlightsExtractor:
             chapter_progress = int(chapter_progress)
         highlight_info["chapter_progress"] = chapter_progress
         highlight_info["date"] = highlight["date"]
+        highlight_info["color"] = color_names[highlight["color"]] or highlight["color"]
+
         return highlight_info
 
     def extract_highlights(self):
